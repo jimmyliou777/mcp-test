@@ -29,7 +29,8 @@ server.tool("xe_auth_info", "获取XE系统登录后的Cookie信息", {}, async 
             defaultViewport: null,
             args: ['--window-size=1280,800']
         });
-        const page = await browser.newPage();
+        const context = await browser.createBrowserContext();
+        const page = await context.newPage();
         // 步骤1: 进入登录页面
         await page.goto('https://tst-auth.mayohr.com/HRM/Account/Login?original_target=https%3A%2F%2Ftst-apolloxe.mayohr.com%2Ftube&lang=zh-tw', {
             waitUntil: 'networkidle2'
@@ -48,57 +49,67 @@ server.tool("xe_auth_info", "获取XE系统登录后的Cookie信息", {}, async 
         if (page.url().includes('SelectCompany')) {
             console.error('已进入选择公司页面');
             // 寻找data-tip属性中包含"天空公司"的元素并点击
-            await page.waitForSelector('[data-tip]');
+            await page.waitForSelector('[data-tip]', { timeout: 10000 });
             const companyElements = await page.$$('[data-tip]');
-            let found = false;
+            // 收集所有 dataTip 内容
+            const dataTipList = [];
             for (const element of companyElements) {
                 const dataTip = await page.evaluate(el => el.getAttribute('data-tip'), element);
-                if (dataTip && dataTip.includes('天空公司')) {
-                    await Promise.all([
-                        element.click(),
-                        page.waitForNavigation({ waitUntil: 'networkidle2' })
-                    ]);
-                    console.error('已点击包含"天空公司"的元素');
-                    found = true;
-                    break;
-                }
+                console.error('dataTip:', dataTip);
+                dataTipList.push(dataTip);
             }
-            if (!found) {
-                console.error('未找到包含"天空公司"的元素');
-            }
+            // 关闭浏览器
+            await browser.close();
+            // 返回所有 dataTip 内容
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `选择公司页面上所有 dataTip 内容:\n\n${JSON.stringify(dataTipList, null, 2)}`
+                    }
+                ]
+            };
         }
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: "登录成功"
+                }
+            ]
+        };
         // 步骤4: 进入tube页面并获取cookie
         // 使用 setTimeout 替代 waitForTimeout 方法
-        await new Promise(resolve => setTimeout(resolve, 3000)); // 等待3秒确保页面完全加载
-        // 检查是否成功跳转到目标页面
-        if (page.url().includes('tst-apolloxe.mayohr.com/tube')) {
-            console.error('已成功进入tube页面');
-            // 获取所有cookie
-            // const cookies = await page.cookies();
-            // 关闭浏览器
-            // await browser.close();
-            // 返回cookie信息
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: "登录成功"
-                    }
-                ]
-            };
-        }
-        else {
-            console.error('未能成功进入tube页面，当前URL:', page.url());
-            await browser.close();
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: `登录流程未完成，当前页面URL: ${page.url()}`
-                    }
-                ]
-            };
-        }
+        // await new Promise(resolve => setTimeout(resolve, 3000)); // 等待3秒确保页面完全加载
+        // // 检查是否成功跳转到目标页面
+        // if (page.url().includes('tst-apolloxe.mayohr.com/tube')) {
+        //   console.error('已成功进入tube页面');
+        //   // 获取所有cookie
+        //   const cookies = await context.cookies();
+        //   console.error('获取到的cookie信息:', cookies);
+        //   // 关闭浏览器
+        //   await browser.close();
+        //   // 返回cookie信息
+        //   return {
+        //     content: [
+        //       {
+        //         type: "text",
+        //         text: "登录成功"
+        //       }
+        //     ]
+        //   };
+        // } else {
+        //   console.error('未能成功进入tube页面，当前URL:', page.url());
+        //   await browser.close();
+        //   return {
+        //     content: [
+        //       {
+        //         type: "text",
+        //         text: `登录流程未完成，当前页面URL: ${page.url()}`
+        //       }
+        //     ]
+        //   };
+        // }
     }
     catch (error) {
         console.error('执行过程中出错:', error);
