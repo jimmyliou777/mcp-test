@@ -69,6 +69,36 @@ npm start
 - 使用 StdioServerTransport 进行通信
 - 所有工具和资源都在主文件中定义
 
+### MCP 配置文件说明
+
+项目需要在用户目录下创建 `.cursor/mcp.json` 配置文件，配置示例如下：
+
+```json
+{
+  "mcpServers": {
+    "mcp-test": {
+      "command": "node",
+      "args": [
+        "构建后的项目路径/build/index.js"
+      ]
+    },
+  }
+}
+```
+
+配置文件位置：
+- Windows: `%USERPROFILE%\.cursor\mcp.json`
+- macOS/Linux: `~/.cursor/mcp.json`
+
+配置说明：
+1. `mcpServers`: 定义所有可用的 MCP 服务器
+2. 每个服务器配置包含：
+   - `command`: 执行命令（如 `npx` 或 `node`）
+   - `args`: 命令参数数组
+   - `env`: （可选）环境变量配置
+3. 特殊配置说明：
+   - mcp-test: 本项目的服务器配置
+
 ## 注意事项
 
 - 运行 Puppeteer 相关功能时，确保系统已安装相关依赖
