@@ -173,7 +173,7 @@ server.tool("xe_select_company", "选择XE系统中的公司", {}, async () => {
     }
 });
 // 第四阶段：检查状态并获取结果
-server.tool("xe_check_status", "检查XE系统登录状态并获取结果", {}, async () => {
+server.tool("xe_check_status", "检查XE系统登录状态并获取Cookie信息", {}, async () => {
     try {
         // 获取全局保存的会话
         const session = global.__xe_session;
@@ -185,17 +185,37 @@ server.tool("xe_check_status", "检查XE系统登录状态并获取结果", {}, 
                     }]
             };
         }
-        const { page, browser } = session;
+        const { page, browser, context } = session;
         console.error('获取到已保存的会话，准备检查状态');
         // 获取当前URL
         const currentUrl = page.url();
         console.error('当前URL:', currentUrl);
         // 等待短暂时间，让页面有机会加载
         await new Promise(resolve => setTimeout(resolve, 2000));
+        // 获取所有cookie
+        const cookies = await context.cookies();
+        console.error('获取到的cookie数量:', cookies.length);
+        // 筛选指定的cookie
+        const targetCookies = cookies.filter((cookie) => cookie.name === '__ModuleSessionCookie' ||
+            cookie.name === 'LoggedInDomain');
+        console.error('获取到的目标cookie数量:', targetCookies.length);
+        // 将cookie格式化为易于阅读的格式
+        const cookieDetails = targetCookies.map((cookie) => ({
+            name: cookie.name,
+            value: cookie.value,
+            domain: cookie.domain,
+            path: cookie.path,
+            expires: cookie.expires ? new Date(cookie.expires * 1000).toISOString() : 'Session',
+            httpOnly: cookie.httpOnly,
+            secure: cookie.secure
+        }));
+        // 创建结果对象
         const result = {
             url: currentUrl,
             state: session.state,
             isTargetPage: currentUrl.includes('tst-apolloxe.mayohr.com/tube'),
+            cookieCount: cookies.length,
+            targetCookies: cookieDetails
         };
         // 关闭浏览器并清理会话
         await browser.close();
@@ -203,7 +223,14 @@ server.tool("xe_check_status", "检查XE系统登录状态并获取结果", {}, 
         return {
             content: [{
                     type: "text",
-                    text: `登录流程已完成：\n当前URL: ${result.url}\n登录状态: ${result.state}\n是否到达目标页面: ${result.isTargetPage}`
+                    text: `登录流程已完成：
+当前URL: ${result.url}
+登录状态: ${result.state}
+是否到达目标页面: ${result.isTargetPage}
+Cookie数量: ${result.cookieCount}
+
+关键Cookie信息:
+${JSON.stringify(result.targetCookies, null, 2)}`
                 }]
         };
     }
