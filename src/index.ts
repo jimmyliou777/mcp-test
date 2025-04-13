@@ -111,28 +111,52 @@ server.tool("xe_login",
       }
       
       const { page } = session;
-      console.error('获取到已保存的会话，准备登录');
+      console.error('获取到已保存的会话，等待用户在浏览器中输入账号密码并登录');
       
-      // 输入账号密码
-      await page.type('input[name="userName"]', 'huanuage_lee@bestscrivener.com');
-      await page.type('input[name="password"]', 'Huanuage0058');
+      // 将焦点设置到用户名输入框，方便用户开始输入
+      await page.focus('input[name="userName"]');
       
-      // 点击登录按钮
-      await page.click('button[type="button"].submit-btn');
-      console.error('已输入账号密码并点击登录');
+      // 提示用户手动输入
+      console.error('请在浏览器中手动输入账号密码，然后点击登录按钮');
       
-      // 等待短暂时间以确保导航开始
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // 更新会话状态
-      session.state = 'logged_in';
-      
-      return {
-        content: [{ 
-          type: "text", 
-          text: `登录已执行，当前URL: ${page.url()}，请继续使用 xe_select_company 工具选择公司` 
-        }]
-      };
+      // 等待登录按钮被点击
+      try {
+        // 监听登录按钮的点击事件
+        await page.evaluate(() => {
+          return new Promise(resolve => {
+            const loginBtn = document.querySelector('button[type="button"].submit-btn');
+            if (loginBtn) {
+              loginBtn.addEventListener('click', () => {
+                console.log('登录按钮被点击');
+                resolve(true);
+              });
+            }
+          });
+        });
+        
+        console.error('检测到登录按钮被点击');
+        
+        // 等待短暂时间以确保导航开始
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // 更新会话状态
+        session.state = 'user_login_initiated';
+        
+        return {
+          content: [{ 
+            type: "text", 
+            text: `已检测到登录操作，当前URL: ${page.url()}，请继续使用 xe_select_company 工具选择公司` 
+          }]
+        };
+      } catch (error) {
+        console.error('等待登录按钮点击时出错:', error);
+        return {
+          content: [{ 
+            type: "text", 
+            text: "等待用户登录超时，请重试并确保点击登录按钮" 
+          }]
+        };
+      }
     } catch (error: unknown) {
       console.error('登录过程出错:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
